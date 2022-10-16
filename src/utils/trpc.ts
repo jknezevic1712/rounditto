@@ -1,36 +1,45 @@
-import { initTRPC, TRPCError } from "@trpc/server";
+import { httpBatchLink } from "@trpc/client";
+import { createTRPCNext } from "@trpc/next";
+import type { AppRouter } from "@/backend/router";
 
-// Avoid exporting the entire t-object since it's not very
-// descriptive and can be confusing to newcomers used to t
-// meaning translation in i18n libraries.
-const t = initTRPC.create();
+function getBaseUrl() {
+  if (typeof window !== "undefined")
+    // browser should use relative path
+    return "";
 
-// Base router and procedure helpers
-export const router = t.router;
-export const publicProcedure = t.procedure;
+  if (process.env.VERCEL_URL)
+    // reference for vercel.com
+    return `https://${process.env.VERCEL_URL}`;
 
-/**
- * Reusable middleware that checks if users are authenticated.
- * @note Example only, yours may vary depending on how your auth is setup
- **/
-// const isAuthed = t.middleware(({ next, ctx }) => {
-//   if (!ctx.session?.user?.email) {
-//     throw new TRPCError({
-//       code: 'UNAUTHORIZED',
-//     });
-//   }
-//   return next({
-//     ctx: {
-//       // Infers the `session` as non-nullable
-//       session: ctx.session,
-//     },
-//   });
-// });
+  if (process.env.RENDER_INTERNAL_HOSTNAME)
+    // reference for render.com
+    return `http://${process.env.RENDER_INTERNAL_HOSTNAME}:${process.env.PORT}`;
 
-// Protected procedures for logged in users only
-// export const protectedProcedure = t.procedure.use(isAuthed);
+  // assume localhost
+  return `http://localhost:${process.env.PORT ?? 3000}`;
+}
 
-// import { createReactQueryHooks } from "@trpc/react";
-// import type { AppRouter } from "@/backend/router";
-
-// export const trpc = createReactQueryHooks<AppRouter>();
+export const trpc = createTRPCNext<AppRouter>({
+  config({ ctx }) {
+    return {
+      links: [
+        httpBatchLink({
+          /**
+           * If you want to use SSR, you need to use the server's full URL
+           * @link https://trpc.io/docs/ssr
+           **/
+          url: `${getBaseUrl()}/api/trpc`,
+        }),
+      ],
+      /**
+       * @link https://react-query-v3.tanstack.com/reference/QueryClient
+       **/
+      // queryClientConfig: { defaultOptions: { queries: { staleTime: 60 } } },
+    };
+  },
+  /**
+   * @link https://trpc.io/docs/ssr
+   **/
+  ssr: false,
+});
+// => { useQuery: ..., useMutation: ...}

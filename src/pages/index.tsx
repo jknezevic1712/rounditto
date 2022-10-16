@@ -1,25 +1,43 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import { getOptionsForVote } from "@/utils/getRandomPokemon";
+import { trpc } from "@/utils/trpc";
 
 const Home = () => {
-  const [first, second] = getOptionsForVote();
-  const [firstPokemon, setFirstPokemon] = useState(0);
-  const [secondPokemon, setSecondPokemon] = useState(0);
+  const [ids, updateIds] = useState(() => getOptionsForVote());
 
-  useEffect(() => {
-    setFirstPokemon(first);
-    setSecondPokemon(second);
-  }, []);
+  const [first, second] = ids;
+
+  const firstPokemon = trpc["get-pokemon-by-id"].useQuery({ id: first });
+  const secondPokemon = trpc["get-pokemon-by-id"].useQuery({ id: second });
+
+  if (firstPokemon.isLoading || secondPokemon.isLoading) return null;
 
   return (
     <div className="h-screen w-screen flex flex-col justify-center items-center">
       <div className="text-2xl text-center">Which Pokemon is rounder?</div>
       <div className="p-2" />
       <div className="border rounded p-8 flex justify-between items-center max-w-2xl">
-        <div className="w-16 h-16 bg-red-800">{firstPokemon}</div>
+        <div className="w-64 h-64 flex flex-col">
+          <img
+            src={firstPokemon.data?.sprites.front_default || ""}
+            className="w-full"
+          />
+          <div className="text-xl text-center capitalize mt-[-2rem]">
+            {firstPokemon.data?.name}
+          </div>
+        </div>
         <div className="p-8">Vs</div>
-        <div className="w-16 h-16 bg-red-800">{secondPokemon}</div>
+        <div className="w-64 h-64 flex flex-col">
+          <img
+            src={secondPokemon.data?.sprites.front_default || ""}
+            className="w-full"
+          />
+          <div className="text-xl text-center capitalize mt-[-2rem]">
+            {secondPokemon.data?.name}
+          </div>
+        </div>
+        <div className="p-2" />
       </div>
     </div>
   );
